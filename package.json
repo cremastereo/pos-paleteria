@@ -12,6 +12,8 @@
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
     "build:service": "dotnet publish fiscal-service/src/FiscalService/FiscalService.csproj -c Release -r win-x86 --self-contained true -o resources/fiscal-service"
   },
   "dependencies": {
@@ -19,6 +21,7 @@
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.15",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-router": "^1.170.44",
     "@tanstack/router-plugin": "^1.168.46",

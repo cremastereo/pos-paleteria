@@ -1,12 +1,11 @@
-import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
-import { createConnection } from 'node:net'
-import { existsSync } from 'node:fs'
-import { join, dirname } from 'node:path'
+import { type ChildProcessWithoutNullStreams, execFile, spawn } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
-import { app, type BrowserWindow } from 'electron'
-import { execFile } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import { createConnection } from 'node:net'
+import { dirname, join } from 'node:path'
 import { promisify } from 'node:util'
-import { ServiceLogSink, readPidFile, writePidFile } from './service-log-sink'
+import { app, type BrowserWindow } from 'electron'
+import { readPidFile, ServiceLogSink, writePidFile } from './service-log-sink'
 
 const execFileAsync = promisify(execFile)
 
@@ -64,7 +63,11 @@ export class FiscalServiceManager {
     const exe = this.resolveExe()
     const nextToExe = join(dirname(exe), 'samples')
     if (existsSync(nextToExe)) return nextToExe
-    return join(app.isPackaged ? process.resourcesPath : app.getAppPath(), 'fiscal-service', 'samples')
+    return join(
+      app.isPackaged ? process.resourcesPath : app.getAppPath(),
+      'fiscal-service',
+      'samples'
+    )
   }
 
   getInfo(): ServiceInfo {
