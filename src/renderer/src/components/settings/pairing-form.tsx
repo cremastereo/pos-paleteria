@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/components/ui/input-otp'
 import { Label } from '@/components/ui/label'
 import { readSyncApi } from '@/lib/sync'
-import type { DeviceLinkView } from '../../../shared/sync-api'
+import type { DeviceLinkView } from '../../../../shared/sync-api'
 
 const PAIRING_CODE_LENGTH = 8
 const pairingSlotClassName = 'h-10 w-10 text-base font-medium'

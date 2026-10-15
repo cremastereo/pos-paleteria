@@ -1,7 +1,6 @@
 import { useNavigate } from '@tanstack/react-router'
 import { Eye, EyeOff, Lock, User } from 'lucide-react'
 import { useState } from 'react'
-import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -10,6 +9,7 @@ import {
   InputGroupButton,
   InputGroupInput
 } from '@/components/ui/input-group'
+import { toast } from '@/components/ui/toast'
 import { readAuthApi } from '@/lib/sync'
 import { usePosSession } from '@/session'
 
@@ -39,7 +39,7 @@ export function LoginForm() {
         return
       }
       setUser(result.user)
-      toast.success('Iniciaste sesión correctamente.')
+      toast.add({ title: 'Iniciaste sesión correctamente.', type: 'success' })
       await navigate({ to: '/pos' })
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'No se pudo iniciar sesión.')

@@ -3,6 +3,14 @@ import { useEffect, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card'
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -18,9 +26,10 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
 import { useFiscalPrinter } from '@/fiscal/state/printer'
 import { readSyncApi } from '@/lib/sync'
-import { type DeviceLinkView, type DeviceStatus, unlinkedStatus } from '../../../shared/sync-api'
+import { type DeviceLinkView, type DeviceStatus, unlinkedStatus } from '../../../../shared/sync-api'
 
 const DEVICE_STATUS_LABEL: Record<DeviceStatus, string> = {
   pending: 'Pendiente',
@@ -136,7 +145,7 @@ function SettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className='sm:max-w-md'>
         <DialogHeader>
           <DialogTitle>Ajustes</DialogTitle>
           <DialogDescription>
@@ -185,39 +194,104 @@ function SettingsDialog({
 }
 
 function FiscalPrinterSection({ open }: { open: boolean }) {
-  const { port, ports, portsLoading, serviceReady, refreshPorts, selectPort } = useFiscalPrinter()
+  const {
+    port,
+    ports,
+    portsLoading,
+    serviceReady,
+    status,
+    reconnecting,
+    refreshPorts,
+    selectPort,
+    reconnectPort
+  } = useFiscalPrinter()
+  const [note, setNote] = useState<Feedback | null>(null)
 
   useEffect(() => {
     if (!open) return
     void refreshPorts()
   }, [open, refreshPorts])
 
+  useEffect(() => {
+    setNote(null)
+  }, [open, port])
+
+  async function reopenPort() {
+    setNote(null)
+    const result = await reconnectPort()
+    if (result === 'active') {
+      setNote({ kind: 'success', message: 'Puerto cerrado y abierto. La máquina fiscal responde.' })
+      return
+    }
+    if (result === 'inactive') {
+      setNote({
+        kind: 'error',
+        message: 'Se cerró y abrió el puerto, pero la máquina no responde.'
+      })
+      return
+    }
+    if (result === 'busy') {
+      setNote({ kind: 'error', message: 'El servicio fiscal está ocupado. Intenta de nuevo.' })
+      return
+    }
+    setNote({ kind: 'error', message: 'El servicio fiscal no está listo para reabrir el puerto.' })
+  }
+
   const options = port && !ports.includes(port) ? [port, ...ports] : ports
 
   return (
-    <section className='grid gap-3 rounded-xl border p-4'>
-      <div className='grid gap-1'>
-        <h3 className='text-sm font-medium'>Máquina fiscal</h3>
-        <p className='text-sm text-pretty text-muted-foreground'>
+    <Card size='sm'>
+      <CardHeader>
+        <CardTitle>Máquina fiscal</CardTitle>
+        <CardDescription>
           Elige el puerto COM de la impresora. Queda guardado en este equipo.
-        </p>
-      </div>
-      <div className='grid gap-2'>
+        </CardDescription>
+        <CardAction>
+          <PrinterBadge status={status} reconnecting={reconnecting} />
+        </CardAction>
+      </CardHeader>
+      <CardContent className='grid gap-2'>
         <Label>Puerto COM</Label>
-        <Select value={port ?? undefined} onValueChange={selectPort} disabled={!serviceReady}>
-          <SelectTrigger className='w-full'>
-            <SelectValue
-              placeholder={portsLoading ? 'Buscando puertos…' : 'Selecciona un puerto'}
-            />
-          </SelectTrigger>
-          <SelectContent className='z-80' position='popper'>
-            {options.map((item) => (
-              <SelectItem key={item} value={item}>
-                {item}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className='flex items-center gap-2'>
+          <div className='min-w-0 flex-1'>
+            <Select
+              value={port ?? undefined}
+              onValueChange={(value) => {
+                if (value) selectPort(value)
+              }}
+              disabled={!serviceReady || reconnecting}
+            >
+              <SelectTrigger className='w-full'>
+                <SelectValue
+                  placeholder={portsLoading ? 'Buscando puertos…' : 'Selecciona un puerto'}
+                />
+              </SelectTrigger>
+              <SelectContent className='z-80'>
+                {options.map((item) => (
+                  <SelectItem key={item} value={item}>
+                    {item}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            type='button'
+            variant='outline'
+            className='shrink-0'
+            disabled={!serviceReady || !port || reconnecting}
+            onClick={() => void reopenPort()}
+          >
+            {reconnecting ? 'Cerrando…' : 'Cerrar y abrir'}
+          </Button>
+        </div>
+        {note ? (
+          <p
+            className={note.kind === 'error' ? 'text-destructive text-sm' : 'text-positive text-sm'}
+          >
+            {note.message}
+          </p>
+        ) : null}
         {serviceReady ? null : (
           <p className='text-sm text-muted-foreground'>
             El servicio fiscal no está listo para consultar los puertos.
@@ -226,9 +300,22 @@ function FiscalPrinterSection({ open }: { open: boolean }) {
         {serviceReady && !portsLoading && ports.length === 0 ? (
           <p className='text-sm text-muted-foreground'>No hay puertos COM disponibles.</p>
         ) : null}
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   )
+}
+
+function PrinterBadge({
+  status,
+  reconnecting
+}: {
+  status: 'unconfigured' | 'active' | 'inactive'
+  reconnecting: boolean
+}) {
+  if (reconnecting) return <Badge variant='alert'>Reconectando</Badge>
+  if (status === 'active') return <Badge variant='positive'>Activa</Badge>
+  if (status === 'inactive') return <Badge variant='destructive'>Inactiva</Badge>
+  return <Badge variant='outline'>Sin puerto</Badge>
 }
 
 function LinkedStatus({ status }: { status: DeviceLinkView }) {
@@ -237,67 +324,48 @@ function LinkedStatus({ status }: { status: DeviceLinkView }) {
   const branchAddress = status.branch?.address?.trim() || 'Sin dirección'
 
   return (
-    <section className='overflow-hidden rounded-xl border bg-card'>
-      <div className='flex items-start gap-3 bg-cspurple-50 px-4 py-4'>
-        <div className='flex size-10 shrink-0 items-center justify-center rounded-lg bg-cspurple text-white'>
-          <Store />
+    <Card size='sm' className='gap-0 py-0'>
+      <CardHeader className='py-(--card-spacing)'>
+        <div className='flex min-w-0 items-start gap-3'>
+          <div className='flex size-10 shrink-0 items-center justify-center rounded-lg bg-cspurple text-white'>
+            <Store />
+          </div>
+          <div className='min-w-0'>
+            <p className='text-xs text-muted-foreground'>Sucursal</p>
+            <CardTitle className='text-base text-pretty text-cspurple'>{branchName}</CardTitle>
+            <CardDescription className='mt-0.5 text-pretty text-xs'>
+              {branchAddress}
+            </CardDescription>
+          </div>
         </div>
-        <div className='min-w-0 flex-1'>
-          <p className='text-muted-foreground text-xs'>Sucursal</p>
-          <p className='text-base font-medium text-pretty text-cspurple'>{branchName}</p>
-          <p className='mt-0.5 text-sm text-pretty text-muted-foreground'>{branchAddress}</p>
-        </div>
-        <BranchBadge active={status.branch ? status.branch.active : null} />
-      </div>
-      <div className='flex items-center gap-3 border-t px-4 py-3'>
+        <CardAction>
+          <BranchBadge active={status.branch ? status.branch.active : null} />
+        </CardAction>
+      </CardHeader>
+      <Separator />
+      <CardContent className='flex items-center gap-3 py-3'>
         <div className='flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-cspurple'>
           <Monitor />
         </div>
         <div className='min-w-0 flex-1'>
-          <p className='text-muted-foreground text-xs'>Dispositivo</p>
+          <p className='text-xs text-muted-foreground'>Dispositivo</p>
           <p className='font-medium text-pretty'>{deviceName}</p>
         </div>
         <DeviceBadge status={status.device?.status ?? null} />
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   )
 }
 
 function BranchBadge({ active }: { active: boolean | null }) {
   if (active === null) return <Badge variant='outline'>Sin datos</Badge>
-  if (active) {
-    return (
-      <Badge className='border-border-positive bg-positive-muted text-positive-muted-foreground'>
-        Activa
-      </Badge>
-    )
-  }
-  return (
-    <Badge className='border-border-destructive bg-destructive-muted text-destructive'>
-      Inactiva
-    </Badge>
-  )
+  if (active) return <Badge variant='positive'>Activa</Badge>
+  return <Badge variant='destructive'>Inactiva</Badge>
 }
 
 function DeviceBadge({ status }: { status: DeviceStatus | null }) {
   if (status === null) return <Badge variant='outline'>Sin estado</Badge>
-  if (status === 'active') {
-    return (
-      <Badge className='border-border-positive bg-positive-muted text-positive-muted-foreground'>
-        {DEVICE_STATUS_LABEL.active}
-      </Badge>
-    )
-  }
-  if (status === 'pending') {
-    return (
-      <Badge className='border-csyellow-300 bg-csyellow-100 text-cspurple'>
-        {DEVICE_STATUS_LABEL.pending}
-      </Badge>
-    )
-  }
-  return (
-    <Badge className='border-border-destructive bg-destructive-muted text-destructive'>
-      {DEVICE_STATUS_LABEL.revoked}
-    </Badge>
-  )
+  if (status === 'active') return <Badge variant='positive'>{DEVICE_STATUS_LABEL.active}</Badge>
+  if (status === 'pending') return <Badge variant='alert'>{DEVICE_STATUS_LABEL.pending}</Badge>
+  return <Badge variant='destructive'>{DEVICE_STATUS_LABEL.revoked}</Badge>
 }

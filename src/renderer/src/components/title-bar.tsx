@@ -1,7 +1,7 @@
 import { useNavigate } from '@tanstack/react-router'
 import { LogOut } from 'lucide-react'
 import { type ReactNode, useEffect, useState } from 'react'
-import { SettingsButton } from '@/components/settings-dialog'
+import { SettingsButton } from '@/components/settings/settings-dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useFiscalPrinter } from '@/fiscal/state/printer'
 import { usePosSession } from '@/session'

@@ -1,6 +1,6 @@
 import { createRootRoute, Outlet } from '@tanstack/react-router'
-import { Toaster } from 'sonner'
 import { TitleBar } from '@/components/title-bar'
+import { Toaster } from '@/components/ui/toast'
 import { FiscalPrinterProvider } from '@/fiscal/state/printer'
 import { PosSessionProvider } from '@/session'
 
@@ -15,7 +15,7 @@ export const Route = createRootRoute({
               <Outlet />
             </div>
           </div>
-          <Toaster position='top-center' offset={56} />
+          <Toaster />
         </FiscalPrinterProvider>
       </PosSessionProvider>
     )
