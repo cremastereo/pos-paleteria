@@ -2,7 +2,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { Eye, EyeOff, Lock, User } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   InputGroup,
   InputGroupAddon,
@@ -12,6 +12,7 @@ import {
 import { toast } from '@/components/ui/toast'
 import { readAuthApi } from '@/lib/sync'
 import { usePosSession } from '@/session'
+import logo from '../../../../../imgs/logo.svg'
 
 export function LoginForm() {
   const navigate = useNavigate()
@@ -48,9 +49,9 @@ export function LoginForm() {
   }
 
   return (
-    <Card className='w-full max-w-md'>
-      <CardHeader>
-        <CardTitle>Iniciar sesión</CardTitle>
+    <Card className='w-full max-w-xs'>
+      <CardHeader className='w-full flex justify-center'>
+        <img src={logo} alt='Logo' className='h-auto w-36' />
       </CardHeader>
       <CardContent>
         <form
@@ -102,6 +103,11 @@ export function LoginForm() {
           </Button>
         </form>
       </CardContent>
+      <CardFooter>
+        <span className='text-xs text-muted-foreground text-center w-full'>
+          Desarrollado por el equipo de Ubimat 💻
+        </span>
+      </CardFooter>
     </Card>
   )
 }
