@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import type { SyncApi, SyncPairResult, SyncPullResult, SyncStatusResult } from '../shared/sync-api'
 
 export type ServiceState =
   | 'starting'
@@ -53,5 +54,16 @@ const db = {
   ping: (): Promise<DbPingResult> => ipcRenderer.invoke('db:ping')
 }
 
+function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
+  return ipcRenderer.invoke(channel, ...args) as Promise<T>
+}
+
+const sync: SyncApi = {
+  getStatus: () => invoke<SyncStatusResult>('sync:getStatus'),
+  pair: (pairingCode) => invoke<SyncPairResult>('sync:pair', pairingCode),
+  pull: () => invoke<SyncPullResult>('sync:pull')
+}
+
 contextBridge.exposeInMainWorld('fiscal', fiscal)
 contextBridge.exposeInMainWorld('db', db)
+contextBridge.exposeInMainWorld('sync', sync)

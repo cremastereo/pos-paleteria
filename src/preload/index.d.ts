@@ -1,3 +1,4 @@
+import type { SyncApi } from '../shared/sync-api'
 import type { ServiceInfo, LogLine, DbPingResult } from './index'
 
 export interface FiscalApi {
@@ -19,6 +20,7 @@ declare global {
   interface Window {
     fiscal: FiscalApi
     db: DbApi
+    sync: SyncApi
   }
 }
 

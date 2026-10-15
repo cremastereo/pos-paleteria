@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import { join } from 'node:path'
 import { closeDatabase, openDatabase, pingDatabase } from './db/client'
 import { FiscalServiceManager } from './fiscal-service-manager'
+import { getStatus, pair, pull } from './sync/service'
 
 const manager = new FiscalServiceManager()
 let mainWindow: BrowserWindow | null = null
@@ -52,6 +53,9 @@ function registerIpc() {
   })
   ipcMain.handle('samples:path', () => manager.samplesDir)
   ipcMain.handle('db:ping', () => pingDatabase())
+  ipcMain.handle('sync:getStatus', () => getStatus())
+  ipcMain.handle('sync:pair', (_event, pairingCode: unknown) => pair(pairingCode))
+  ipcMain.handle('sync:pull', () => pull())
 }
 
 app.whenReady().then(async () => {
