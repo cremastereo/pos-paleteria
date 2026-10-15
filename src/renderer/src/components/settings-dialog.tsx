@@ -1,5 +1,7 @@
+import { REGEXP_ONLY_DIGITS_AND_CHARS } from 'input-otp'
+import { Monitor, Settings, Store } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Settings } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -9,14 +11,22 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
+import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/components/ui/input-otp'
 import { Label } from '@/components/ui/label'
 import {
-  unlinkedStatus,
   type DeviceLinkView,
   type DeviceStatus,
-  type SyncApi
+  type SyncApi,
+  unlinkedStatus
 } from '../../../shared/sync-api'
+
+const PAIRING_CODE_LENGTH = 8
+const pairingSlotClassName = 'h-10 w-10 text-base font-medium'
+
+function formatPairingCode(value: string) {
+  const code = value.toUpperCase()
+  return `${code.slice(0, 4)}-${code.slice(4, PAIRING_CODE_LENGTH)}`
+}
 
 const DEVICE_STATUS_LABEL: Record<DeviceStatus, string> = {
   pending: 'Pendiente',
@@ -108,6 +118,7 @@ function SettingsDialog({
   }, [open])
 
   async function link() {
+    if (pairingCode.length < PAIRING_CODE_LENGTH) return
     setPending('pair')
     setFeedback(null)
     const sync = readSyncApi()
@@ -120,7 +131,7 @@ function SettingsDialog({
       return
     }
     try {
-      const result = await sync.pair(pairingCode)
+      const result = await sync.pair(formatPairingCode(pairingCode))
       setStatus(result.status)
       if (result.ok) {
         setPairingCode('')
@@ -185,25 +196,42 @@ function SettingsDialog({
           <LinkedStatus status={status} />
         ) : (
           <form
-            className='grid gap-3'
+            className='grid gap-4'
             onSubmit={(event) => {
               event.preventDefault()
               void link()
             }}
           >
-            <div className='grid gap-2'>
+            <div className='flex flex-col items-center gap-3'>
               <Label htmlFor='pairing-code'>Código de vinculación</Label>
-              <Input
+              <InputOTP
                 id='pairing-code'
+                maxLength={PAIRING_CODE_LENGTH}
+                pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
                 value={pairingCode}
-                onChange={(event) => setPairingCode(event.target.value)}
+                onChange={(value) => setPairingCode(value.toUpperCase())}
+                pasteTransformer={(pasted) => pasted.replace(/[^a-zA-Z0-9]/g, '')}
                 autoComplete='off'
                 spellCheck={false}
-                placeholder='XXXX-XXXX'
                 disabled={busy}
-              />
+                containerClassName='justify-center'
+              >
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} className={pairingSlotClassName} />
+                  <InputOTPSlot index={1} className={pairingSlotClassName} />
+                  <InputOTPSlot index={2} className={pairingSlotClassName} />
+                  <InputOTPSlot index={3} className={pairingSlotClassName} />
+                </InputOTPGroup>
+                <InputOTPSeparator />
+                <InputOTPGroup>
+                  <InputOTPSlot index={4} className={pairingSlotClassName} />
+                  <InputOTPSlot index={5} className={pairingSlotClassName} />
+                  <InputOTPSlot index={6} className={pairingSlotClassName} />
+                  <InputOTPSlot index={7} className={pairingSlotClassName} />
+                </InputOTPGroup>
+              </InputOTP>
             </div>
-            <Button type='submit' disabled={busy || pairingCode.trim() === ''}>
+            <Button type='submit' disabled={busy || pairingCode.length < PAIRING_CODE_LENGTH}>
               {pending === 'pair' ? 'Vinculando…' : 'Vincular'}
             </Button>
           </form>
@@ -221,7 +249,12 @@ function SettingsDialog({
 
         {status?.linked ? (
           <DialogFooter>
-            <Button type='button' disabled={busy} onClick={() => void updateData()}>
+            <Button
+              type='button'
+              className='w-full'
+              disabled={busy}
+              onClick={() => void updateData()}
+            >
               {pending === 'pull' ? 'Actualizando…' : 'Actualizar datos'}
             </Button>
           </DialogFooter>
@@ -233,31 +266,71 @@ function SettingsDialog({
 
 function LinkedStatus({ status }: { status: DeviceLinkView }) {
   const deviceName = status.device?.name?.trim() || 'Sin nombre'
-  const deviceStatus = status.device ? DEVICE_STATUS_LABEL[status.device.status] : null
-  const branchName = status.branch?.name ?? 'Sin datos de la sucursal'
+  const branchName = status.branch?.name ?? 'Sin sucursal'
   const branchAddress = status.branch?.address?.trim() || 'Sin dirección'
 
   return (
-    <dl className='grid gap-3 text-sm'>
-      <div className='grid gap-1'>
-        <dt className='text-muted-foreground'>Dispositivo</dt>
-        <dd>
-          {deviceName}
-          {deviceStatus ? ` · ${deviceStatus}` : null}
-        </dd>
+    <section className='overflow-hidden rounded-xl border bg-card'>
+      <div className='flex items-start gap-3 bg-cspurple-50 px-4 py-4'>
+        <div className='flex size-10 shrink-0 items-center justify-center rounded-lg bg-cspurple text-white'>
+          <Store />
+        </div>
+        <div className='min-w-0 flex-1'>
+          <p className='text-muted-foreground text-xs'>Sucursal</p>
+          <p className='text-base font-medium text-pretty text-cspurple'>{branchName}</p>
+          <p className='mt-0.5 text-sm text-pretty text-muted-foreground'>{branchAddress}</p>
+        </div>
+        <BranchBadge active={status.branch ? status.branch.active : null} />
       </div>
-      <div className='grid gap-1'>
-        <dt className='text-muted-foreground'>Sucursal</dt>
-        <dd>{branchName}</dd>
+      <div className='flex items-center gap-3 border-t px-4 py-3'>
+        <div className='flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-cspurple'>
+          <Monitor />
+        </div>
+        <div className='min-w-0 flex-1'>
+          <p className='text-muted-foreground text-xs'>Dispositivo</p>
+          <p className='font-medium text-pretty'>{deviceName}</p>
+        </div>
+        <DeviceBadge status={status.device?.status ?? null} />
       </div>
-      <div className='grid gap-1'>
-        <dt className='text-muted-foreground'>Dirección</dt>
-        <dd>{status.branch ? branchAddress : 'Sin dirección'}</dd>
-      </div>
-      <div className='grid gap-1'>
-        <dt className='text-muted-foreground'>Estado de la sucursal</dt>
-        <dd>{status.branch ? (status.branch.active ? 'Activa' : 'Inactiva') : 'Sin datos'}</dd>
-      </div>
-    </dl>
+    </section>
+  )
+}
+
+function BranchBadge({ active }: { active: boolean | null }) {
+  if (active === null) return <Badge variant='outline'>Sin datos</Badge>
+  if (active) {
+    return (
+      <Badge className='border-border-positive bg-positive-muted text-positive-muted-foreground'>
+        Activa
+      </Badge>
+    )
+  }
+  return (
+    <Badge className='border-border-destructive bg-destructive-muted text-destructive'>
+      Inactiva
+    </Badge>
+  )
+}
+
+function DeviceBadge({ status }: { status: DeviceStatus | null }) {
+  if (status === null) return <Badge variant='outline'>Sin estado</Badge>
+  if (status === 'active') {
+    return (
+      <Badge className='border-border-positive bg-positive-muted text-positive-muted-foreground'>
+        {DEVICE_STATUS_LABEL.active}
+      </Badge>
+    )
+  }
+  if (status === 'pending') {
+    return (
+      <Badge className='border-csyellow-300 bg-csyellow-100 text-cspurple'>
+        {DEVICE_STATUS_LABEL.pending}
+      </Badge>
+    )
+  }
+  return (
+    <Badge className='border-border-destructive bg-destructive-muted text-destructive'>
+      {DEVICE_STATUS_LABEL.revoked}
+    </Badge>
   )
 }

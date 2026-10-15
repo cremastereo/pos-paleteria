@@ -1,6 +1,7 @@
+import { createHashHistory, createRouter, RouterProvider } from '@tanstack/react-router'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { createHashHistory, createRouter, RouterProvider } from '@tanstack/react-router'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { routeTree } from './routeTree.gen'
 import './styles.css'
 
@@ -18,6 +19,8 @@ declare module '@tanstack/react-router' {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <TooltipProvider>
+      <RouterProvider router={router} />
+    </TooltipProvider>
   </StrictMode>
 )
