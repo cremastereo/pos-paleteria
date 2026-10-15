@@ -1,0 +1,18 @@
+appId: com.cremastereo.pos
+productName: Crema Stereo POS
+directories:
+  buildResources: build
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - '!fiscal-service/**'
+  - '!docs/**'
+extraResources:
+  - from: resources/fiscal-service
+    to: fiscal-service
+win:
+  executableName: crema-stereo-pos
+npmRebuild: false

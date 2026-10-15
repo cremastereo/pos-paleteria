@@ -1,0 +1,11 @@
+.testing-facktory-hka/
+
+node_modules/
+out/
+dist/
+*.log
+
+fiscal-service/**/bin/
+fiscal-service/**/obj/
+
+resources/fiscal-service/

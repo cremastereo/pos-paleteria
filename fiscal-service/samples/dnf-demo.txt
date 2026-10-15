@@ -1,0 +1,5 @@
+80$Documento de Prueba
+80¡Esto es un documento de texto
+80!Es un documento no fiscal
+80*Es bastante util y versatil
+81 Fin del Documento no Fiscal
