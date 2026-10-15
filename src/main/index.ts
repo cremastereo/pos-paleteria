@@ -1,7 +1,8 @@
-import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import { join } from 'node:path'
+import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron'
 import { closeDatabase, openDatabase, pingDatabase } from './db/client'
 import { FiscalServiceManager } from './fiscal-service-manager'
+import { login } from './sync/auth'
 import { getStatus, pair, pull } from './sync/service'
 
 const manager = new FiscalServiceManager()
@@ -19,6 +20,9 @@ async function createWindow() {
     minWidth: 800,
     minHeight: 560,
     title: 'Crema Stereo POS',
+    frame: false,
+    backgroundColor: '#362b6d',
+    show: false,
     webPreferences: {
       preload: preloadPath(),
       contextIsolation: true,
@@ -27,6 +31,10 @@ async function createWindow() {
     }
   })
 
+  mainWindow.once('ready-to-show', () => {
+    mainWindow?.show()
+  })
+  bindWindowState(mainWindow)
   manager.setWindow(mainWindow)
 
   if (process.env.ELECTRON_RENDERER_URL) {
@@ -56,9 +64,37 @@ function registerIpc() {
   ipcMain.handle('sync:getStatus', () => getStatus())
   ipcMain.handle('sync:pair', (_event, pairingCode: unknown) => pair(pairingCode))
   ipcMain.handle('sync:pull', () => pull())
+  ipcMain.handle('auth:login', (_event, username: unknown, password: unknown) =>
+    login(username, password)
+  )
+  ipcMain.handle('window:minimize', (event) => {
+    BrowserWindow.fromWebContents(event.sender)?.minimize()
+  })
+  ipcMain.handle('window:toggleMaximize', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win) return false
+    if (win.isMaximized()) win.unmaximize()
+    else win.maximize()
+    return win.isMaximized()
+  })
+  ipcMain.handle('window:close', (event) => {
+    BrowserWindow.fromWebContents(event.sender)?.close()
+  })
+  ipcMain.handle('window:isMaximized', (event) => {
+    return BrowserWindow.fromWebContents(event.sender)?.isMaximized() ?? false
+  })
+}
+
+function bindWindowState(win: BrowserWindow) {
+  const send = (maximized: boolean) => {
+    if (!win.isDestroyed()) win.webContents.send('window:maximized', maximized)
+  }
+  win.on('maximize', () => send(true))
+  win.on('unmaximize', () => send(false))
 }
 
 app.whenReady().then(async () => {
+  Menu.setApplicationMenu(null)
   registerIpc()
   try {
     await openDatabase()

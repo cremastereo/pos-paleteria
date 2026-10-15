@@ -1,5 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import type { AuthApi, LoginResult } from '../shared/auth-api'
 import type { SyncApi, SyncPairResult, SyncPullResult, SyncStatusResult } from '../shared/sync-api'
+import type { WindowApi } from '../shared/window-api'
 
 export type ServiceState =
   | 'starting'
@@ -58,12 +60,30 @@ function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
   return ipcRenderer.invoke(channel, ...args) as Promise<T>
 }
 
+const auth: AuthApi = {
+  login: (username, password) => invoke<LoginResult>('auth:login', username, password)
+}
+
 const sync: SyncApi = {
   getStatus: () => invoke<SyncStatusResult>('sync:getStatus'),
   pair: (pairingCode) => invoke<SyncPairResult>('sync:pair', pairingCode),
   pull: () => invoke<SyncPullResult>('sync:pull')
 }
 
+const windowControls: WindowApi = {
+  minimize: () => invoke('window:minimize'),
+  toggleMaximize: () => invoke<boolean>('window:toggleMaximize'),
+  close: () => invoke('window:close'),
+  isMaximized: () => invoke<boolean>('window:isMaximized'),
+  onMaximizedChange: (listener) => {
+    const wrapped = (_event: unknown, maximized: boolean) => listener(maximized)
+    ipcRenderer.on('window:maximized', wrapped)
+    return () => ipcRenderer.removeListener('window:maximized', wrapped)
+  }
+}
+
 contextBridge.exposeInMainWorld('fiscal', fiscal)
 contextBridge.exposeInMainWorld('db', db)
 contextBridge.exposeInMainWorld('sync', sync)
+contextBridge.exposeInMainWorld('auth', auth)
+contextBridge.exposeInMainWorld('windowControls', windowControls)

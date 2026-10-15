@@ -171,12 +171,18 @@
   --sidebar-ring: oklch(0.2678 0.0787 289.41);
 }
 
+html,
+body,
+#root {
+  height: 100%;
+}
+
 @layer base {
   * {
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground m-0 font-sans text-sm antialiased;
+    @apply bg-background text-foreground m-0 h-full overflow-hidden font-sans text-sm antialiased;
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;

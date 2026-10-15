@@ -1,4 +1,3 @@
-import { REGEXP_ONLY_DIGITS_AND_CHARS } from 'input-otp'
 import { Monitor, Settings, Store } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
@@ -11,22 +10,17 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
-import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/components/ui/input-otp'
 import { Label } from '@/components/ui/label'
 import {
-  type DeviceLinkView,
-  type DeviceStatus,
-  type SyncApi,
-  unlinkedStatus
-} from '../../../shared/sync-api'
-
-const PAIRING_CODE_LENGTH = 8
-const pairingSlotClassName = 'h-10 w-10 text-base font-medium'
-
-function formatPairingCode(value: string) {
-  const code = value.toUpperCase()
-  return `${code.slice(0, 4)}-${code.slice(4, PAIRING_CODE_LENGTH)}`
-}
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
+import { useFiscalPrinter } from '@/fiscal/state/printer'
+import { readSyncApi } from '@/lib/sync'
+import { type DeviceLinkView, type DeviceStatus, unlinkedStatus } from '../../../shared/sync-api'
 
 const DEVICE_STATUS_LABEL: Record<DeviceStatus, string> = {
   pending: 'Pendiente',
@@ -38,14 +32,7 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'No se pudo completar la operación.'
 }
 
-function readSyncApi(): SyncApi | null {
-  const candidate: unknown = window.sync
-  if (typeof candidate !== 'object' || candidate === null) return null
-  if (!('getStatus' in candidate) || !('pair' in candidate) || !('pull' in candidate)) return null
-  return candidate as SyncApi
-}
-
-type PendingAction = 'status' | 'pair' | 'pull'
+type PendingAction = 'status' | 'pull'
 
 interface Feedback {
   kind: 'error' | 'success'
@@ -57,15 +44,14 @@ export function SettingsButton() {
 
   return (
     <>
-      <Button
+      <button
         type='button'
-        variant='outline'
-        size='icon'
         aria-label='Ajustes'
+        className='flex h-full w-11 items-center justify-center text-white hover:bg-white/15 [-webkit-app-region:no-drag]'
         onClick={() => setOpen(true)}
       >
-        <Settings />
-      </Button>
+        <Settings className='size-4' />
+      </button>
       <SettingsDialog open={open} onOpenChange={setOpen} />
     </>
   )
@@ -79,7 +65,6 @@ function SettingsDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const [status, setStatus] = useState<DeviceLinkView | null>(null)
-  const [pairingCode, setPairingCode] = useState('')
   const [pending, setPending] = useState<PendingAction | null>(null)
   const [feedback, setFeedback] = useState<Feedback | null>(null)
 
@@ -116,35 +101,6 @@ function SettingsDialog({
       active = false
     }
   }, [open])
-
-  async function link() {
-    if (pairingCode.length < PAIRING_CODE_LENGTH) return
-    setPending('pair')
-    setFeedback(null)
-    const sync = readSyncApi()
-    if (!sync) {
-      setFeedback({
-        kind: 'error',
-        message: 'La vinculación solo está disponible en la aplicación de escritorio.'
-      })
-      setPending(null)
-      return
-    }
-    try {
-      const result = await sync.pair(formatPairingCode(pairingCode))
-      setStatus(result.status)
-      if (result.ok) {
-        setPairingCode('')
-        const branchName = result.status.branch?.name ?? 'la sucursal'
-        setFeedback({ kind: 'success', message: `Vinculado a ${branchName}.` })
-      } else {
-        setFeedback({ kind: 'error', message: result.message })
-      }
-    } catch (error) {
-      setFeedback({ kind: 'error', message: errorMessage(error) })
-    }
-    setPending(null)
-  }
 
   async function updateData() {
     setPending('pull')
@@ -186,55 +142,19 @@ function SettingsDialog({
           <DialogDescription>
             {status?.linked
               ? 'Este punto de venta está vinculado a la administración.'
-              : 'Ingresa el código de vinculación generado en la sucursal.'}
+              : 'No estás vinculado con ninguna sucursal.'}
           </DialogDescription>
         </DialogHeader>
 
         {status === null ? (
           <p className='text-muted-foreground text-sm'>Consultando vinculación…</p>
         ) : status.linked ? (
-          <LinkedStatus status={status} />
+          <div className='grid gap-4'>
+            <LinkedStatus status={status} />
+            <FiscalPrinterSection open={open} />
+          </div>
         ) : (
-          <form
-            className='grid gap-4'
-            onSubmit={(event) => {
-              event.preventDefault()
-              void link()
-            }}
-          >
-            <div className='flex flex-col items-center gap-3'>
-              <Label htmlFor='pairing-code'>Código de vinculación</Label>
-              <InputOTP
-                id='pairing-code'
-                maxLength={PAIRING_CODE_LENGTH}
-                pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
-                value={pairingCode}
-                onChange={(value) => setPairingCode(value.toUpperCase())}
-                pasteTransformer={(pasted) => pasted.replace(/[^a-zA-Z0-9]/g, '')}
-                autoComplete='off'
-                spellCheck={false}
-                disabled={busy}
-                containerClassName='justify-center'
-              >
-                <InputOTPGroup>
-                  <InputOTPSlot index={0} className={pairingSlotClassName} />
-                  <InputOTPSlot index={1} className={pairingSlotClassName} />
-                  <InputOTPSlot index={2} className={pairingSlotClassName} />
-                  <InputOTPSlot index={3} className={pairingSlotClassName} />
-                </InputOTPGroup>
-                <InputOTPSeparator />
-                <InputOTPGroup>
-                  <InputOTPSlot index={4} className={pairingSlotClassName} />
-                  <InputOTPSlot index={5} className={pairingSlotClassName} />
-                  <InputOTPSlot index={6} className={pairingSlotClassName} />
-                  <InputOTPSlot index={7} className={pairingSlotClassName} />
-                </InputOTPGroup>
-              </InputOTP>
-            </div>
-            <Button type='submit' disabled={busy || pairingCode.length < PAIRING_CODE_LENGTH}>
-              {pending === 'pair' ? 'Vinculando…' : 'Vincular'}
-            </Button>
-          </form>
+          <FiscalPrinterSection open={open} />
         )}
 
         {feedback ? (
@@ -261,6 +181,53 @@ function SettingsDialog({
         ) : null}
       </DialogContent>
     </Dialog>
+  )
+}
+
+function FiscalPrinterSection({ open }: { open: boolean }) {
+  const { port, ports, portsLoading, serviceReady, refreshPorts, selectPort } = useFiscalPrinter()
+
+  useEffect(() => {
+    if (!open) return
+    void refreshPorts()
+  }, [open, refreshPorts])
+
+  const options = port && !ports.includes(port) ? [port, ...ports] : ports
+
+  return (
+    <section className='grid gap-3 rounded-xl border p-4'>
+      <div className='grid gap-1'>
+        <h3 className='text-sm font-medium'>Máquina fiscal</h3>
+        <p className='text-sm text-pretty text-muted-foreground'>
+          Elige el puerto COM de la impresora. Queda guardado en este equipo.
+        </p>
+      </div>
+      <div className='grid gap-2'>
+        <Label>Puerto COM</Label>
+        <Select value={port ?? undefined} onValueChange={selectPort} disabled={!serviceReady}>
+          <SelectTrigger className='w-full'>
+            <SelectValue
+              placeholder={portsLoading ? 'Buscando puertos…' : 'Selecciona un puerto'}
+            />
+          </SelectTrigger>
+          <SelectContent className='z-80' position='popper'>
+            {options.map((item) => (
+              <SelectItem key={item} value={item}>
+                {item}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {serviceReady ? null : (
+          <p className='text-sm text-muted-foreground'>
+            El servicio fiscal no está listo para consultar los puertos.
+          </p>
+        )}
+        {serviceReady && !portsLoading && ports.length === 0 ? (
+          <p className='text-sm text-muted-foreground'>No hay puertos COM disponibles.</p>
+        ) : null}
+      </div>
+    </section>
   )
 }
 

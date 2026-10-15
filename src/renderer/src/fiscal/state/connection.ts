@@ -8,8 +8,9 @@ export interface ConnectionState {
   autoCheck: boolean
 }
 
-export function loadPort(): string {
-  return localStorage.getItem('tfhka.port') || 'COM99'
+export function loadPort(): string | null {
+  const port = localStorage.getItem('tfhka.port')?.trim()
+  return port ? port : null
 }
 
 export function savePort(port: string) {

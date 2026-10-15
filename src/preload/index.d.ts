@@ -1,5 +1,7 @@
+import type { AuthApi } from '../shared/auth-api'
 import type { SyncApi } from '../shared/sync-api'
-import type { ServiceInfo, LogLine, DbPingResult } from './index'
+import type { WindowApi } from '../shared/window-api'
+import type { DbPingResult, LogLine, ServiceInfo } from './index'
 
 export interface FiscalApi {
   getServiceInfo: () => Promise<ServiceInfo>
@@ -21,6 +23,8 @@ declare global {
     fiscal: FiscalApi
     db: DbApi
     sync: SyncApi
+    auth?: AuthApi
+    windowControls?: WindowApi
   }
 }
 

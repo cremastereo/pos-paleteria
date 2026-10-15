@@ -1,19 +1,19 @@
-import { app } from 'electron'
 import { hostname } from 'node:os'
+import { app } from 'electron'
 import {
-  unlinkedStatus,
   type DeviceLinkView,
   type SyncErrorCode,
   type SyncFailure,
   type SyncPairResult,
   type SyncPullResult,
-  type SyncStatusResult
+  type SyncStatusResult,
+  unlinkedStatus
 } from '../../shared/sync-api'
 import {
-  pairResponseSchema,
-  pullResponseSchema,
   type PairRequest,
-  type PullRequest
+  type PullRequest,
+  pairResponseSchema,
+  pullResponseSchema
 } from './contracts'
 import {
   assertEncryptionAvailable,
@@ -22,15 +22,15 @@ import {
   loadDeviceToken,
   saveDeviceToken
 } from './device-token'
-import { getDevice, postJson, type HttpResult } from './http'
+import { getDevice, type HttpResult, postJson } from './http'
 import {
   applyPosUsersSnapshot,
   clearDeviceLink,
+  type DeviceLinkRecord,
   linkRecordFromSummaries,
   readDeviceLink,
   readPosUsersCursor,
-  saveDeviceLink,
-  type DeviceLinkRecord
+  saveDeviceLink
 } from './store'
 
 function failure(code: SyncErrorCode, message: string, status: DeviceLinkView): SyncFailure {
@@ -107,7 +107,12 @@ export async function getStatus(): Promise<SyncStatusResult> {
   if (!session.token) return { ok: true, status: session.status }
 
   const remote = await getDevice(session.token)
-  if (!remote.ok) return settle(remote, session.status)
+  if (!remote.ok) {
+    if (remote.code === 'NETWORK' && session.status.linked) {
+      return { ok: true, status: session.status }
+    }
+    return settle(remote, session.status)
+  }
   const status = await saveDeviceLink(
     linkRecordFromSummaries(remote.data.device, remote.data.branch)
   )

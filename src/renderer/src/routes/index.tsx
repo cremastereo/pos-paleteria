@@ -1,25 +1,48 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { SettingsButton } from '@/components/settings-dialog'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useEffect, useState } from 'react'
+import { LoginForm } from '@/components/login-form'
+import { PairingForm } from '@/components/pairing-form'
+import { readSyncApi } from '@/lib/sync'
+import { readStoredSession } from '@/session'
+import { type DeviceLinkView, unlinkedStatus } from '../../../shared/sync-api'
 
 export const Route = createFileRoute('/')({
   component: HomePage
 })
 
 function HomePage() {
+  const navigate = useNavigate()
+  const [status, setStatus] = useState<DeviceLinkView | null>(null)
+
+  useEffect(() => {
+    let active = true
+    const sync = readSyncApi()
+    if (!sync) {
+      setStatus(unlinkedStatus)
+      return
+    }
+    void sync.getStatus().then((result) => {
+      if (active) setStatus(result.status)
+    })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!status?.linked || !readStoredSession()) return
+    void navigate({ to: '/pos' })
+  }, [navigate, status])
+
   return (
-    <main className='relative flex min-h-screen items-center justify-center p-6'>
-      <div className='absolute top-4 left-4'>
-        <SettingsButton />
-      </div>
-      <Card className='w-full max-w-md text-center'>
-        <CardHeader>
-          <CardTitle>Crema Stereo POS</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className='text-3xl font-medium'>Hola Mundo</p>
-        </CardContent>
-      </Card>
+    <main className='flex h-full items-center justify-center p-6'>
+      {status === null ? (
+        <p className='text-sm text-muted-foreground'>Consultando vinculación…</p>
+      ) : status.linked ? (
+        <LoginForm />
+      ) : (
+        <PairingForm onLinked={setStatus} />
+      )}
     </main>
   )
 }
