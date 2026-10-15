@@ -26,6 +26,10 @@ export interface LogLine {
   text: string
 }
 
+export interface DbPingResult {
+  ok: true
+}
+
 const fiscal = {
   getServiceInfo: (): Promise<ServiceInfo> => ipcRenderer.invoke('service:getInfo'),
   restart: (): Promise<void> => ipcRenderer.invoke('service:restart'),
@@ -45,4 +49,9 @@ const fiscal = {
   }
 }
 
+const db = {
+  ping: (): Promise<DbPingResult> => ipcRenderer.invoke('db:ping')
+}
+
 contextBridge.exposeInMainWorld('fiscal', fiscal)
+contextBridge.exposeInMainWorld('db', db)

@@ -1,4 +1,4 @@
-import type { ServiceInfo, LogLine } from './index'
+import type { ServiceInfo, LogLine, DbPingResult } from './index'
 
 export interface FiscalApi {
   getServiceInfo: () => Promise<ServiceInfo>
@@ -11,9 +11,14 @@ export interface FiscalApi {
   onServiceLog: (cb: (line: LogLine) => void) => () => void
 }
 
+export interface DbApi {
+  ping: () => Promise<DbPingResult>
+}
+
 declare global {
   interface Window {
     fiscal: FiscalApi
+    db: DbApi
   }
 }
 

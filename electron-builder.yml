@@ -13,6 +13,10 @@ files:
 extraResources:
   - from: resources/fiscal-service
     to: fiscal-service
+  - from: src/main/db/migrations
+    to: migrations
+asarUnpack:
+  - '**/node_modules/@electric-sql/pglite/**'
 win:
   executableName: crema-stereo-pos
 npmRebuild: false

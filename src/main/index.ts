@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import { join } from 'node:path'
+import { closeDatabase, openDatabase, pingDatabase } from './db/client'
 import { FiscalServiceManager } from './fiscal-service-manager'
 
 const manager = new FiscalServiceManager()
@@ -50,10 +51,19 @@ function registerIpc() {
     return result.canceled ? null : result.filePaths[0]
   })
   ipcMain.handle('samples:path', () => manager.samplesDir)
+  ipcMain.handle('db:ping', () => pingDatabase())
 }
 
 app.whenReady().then(async () => {
   registerIpc()
+  try {
+    await openDatabase()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    dialog.showErrorBox('No se pudo abrir la base de datos', message)
+    app.exit(1)
+    return
+  }
   await manager.start()
   await createWindow()
 })
@@ -66,6 +76,10 @@ app.on('before-quit', async (event) => {
   if (quitting) return
   event.preventDefault()
   quitting = true
-  await manager.stop()
-  app.exit(0)
+  try {
+    await manager.stop()
+    await closeDatabase()
+  } finally {
+    app.exit(0)
+  }
 })
